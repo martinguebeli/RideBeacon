@@ -68,7 +68,7 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                             val alertDetail = if (error == null)
                                 "Start SMS sent to $phone"
                             else
-                                "SMS error — check settings"
+                                (error.take(60))
                             karooSystem.dispatch(
                                 InRideAlert(
                                     id = "rb_start",
@@ -97,7 +97,7 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                             val alertDetail = if (error == null)
                                 "Stop SMS sent to $phone"
                             else
-                                "SMS error — check settings"
+                                (error.take(60))
                             karooSystem.dispatch(
                                 InRideAlert(
                                     id = "rb_stop",
@@ -119,25 +119,20 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
         lastState = state
     }
 
-    /**
-     * Waits 30s before first attempt (network stabilises after ride start),
-     * then retries up to 4 more times with 30s gaps on network errors.
-     */
     private suspend fun sendWithRetry(block: suspend () -> String?): String? {
-        delay(30_000)
-        repeat(5) { attempt ->
+        repeat(3) { attempt ->
             val result = block()
             if (result == null) return null
-            val isNetworkError = result == "No network" || result.contains("resolve", ignoreCase = true) || result.contains("network", ignoreCase = true)
+            val isNetworkError = result.contains("resolve", ignoreCase = true) || result.contains("network", ignoreCase = true)
             if (isNetworkError) {
-                Timber.w("Network not ready (attempt ${attempt + 1}), retrying in 30s")
-                delay(30_000)
+                Timber.w("Network error (attempt ${attempt + 1}), retrying in 15s")
+                delay(15_000)
             } else {
                 Timber.e("SMS failed: $result")
                 return result
             }
         }
-        return "No network after 5 attempts"
+        return "No network"
     }
 
     override fun onDestroy() {
