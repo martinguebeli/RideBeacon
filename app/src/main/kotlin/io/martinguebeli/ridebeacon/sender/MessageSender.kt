@@ -27,6 +27,11 @@ class MessageSender {
         dispatch(settings, text)
     }
 
+    /** Returns null on success, or an error message on failure. */
+    fun sendTestSmsResult(settings: BeaconSettings): String? {
+        return sendSmsResult(settings.smsPhone, settings.smsBeltKey, "✅ RideBeacon test SMS — setup is working!")
+    }
+
     private fun buildMessage(
         template: String,
         settings: BeaconSettings,
@@ -65,6 +70,11 @@ class MessageSender {
     }
 
     private fun sendSms(phone: String, apiKey: String, text: String) {
+        sendSmsResult(phone, apiKey, text)
+    }
+
+    private fun sendSmsResult(phone: String, apiKey: String, text: String): String? {
+        if (phone.isBlank()) return "Phone number is empty"
         val body = FormBody.Builder()
             .add("phone", phone)
             .add("message", text)
@@ -74,12 +84,16 @@ class MessageSender {
             .url("https://textbelt.com/text")
             .post(body)
             .build()
-        try {
+        return try {
             http.newCall(req).execute().use { resp ->
-                Timber.i("SMS sent: ${resp.code}")
+                val bodyStr = resp.body?.string() ?: ""
+                Timber.i("SMS response ${resp.code}: $bodyStr")
+                if (resp.isSuccessful && bodyStr.contains("\"success\":true")) null
+                else "Failed: $bodyStr"
             }
         } catch (e: Exception) {
             Timber.e(e, "SMS send failed")
+            e.message ?: "Unknown error"
         }
     }
 

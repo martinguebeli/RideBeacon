@@ -146,12 +146,8 @@ class MainActivity : ComponentActivity() {
                                     onClick = {
                                         smsTestStatus = "Sending…"
                                         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                            try {
-                                                MessageSender().sendTestSms(settings)
-                                                smsTestStatus = "✓ SMS sent!"
-                                            } catch (e: Exception) {
-                                                smsTestStatus = "✗ Failed: ${e.message}"
-                                            }
+                                            val error = MessageSender().sendTestSmsResult(settings)
+                                            smsTestStatus = if (error == null) "✓ SMS sent!" else "✗ $error"
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
@@ -213,7 +209,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Text(
-                            "v1.0.4 · RideBeacon",
+                            "v1.0.5 · RideBeacon",
                             fontSize = 9.sp,
                             color = Color(0xFF424242),
                             modifier = Modifier.align(Alignment.CenterHorizontally)
