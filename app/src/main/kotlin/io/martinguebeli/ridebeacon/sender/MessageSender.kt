@@ -29,7 +29,7 @@ class MessageSender {
 
     /** Returns null on success, or an error message on failure. */
     fun sendTestSmsResult(settings: BeaconSettings): String? {
-        return sendSmsResult(settings.smsPhone, settings.smsBeltKey, "✅ RideBeacon test SMS — setup is working!")
+        return sendSmsResult(settings.smsPhone, settings.smsBeltKey, "RideBeacon Test SMS from ${settings.riderName}")
     }
 
     private fun buildMessage(
@@ -98,7 +98,7 @@ class MessageSender {
     }
 
     fun sendTestSms(settings: BeaconSettings) {
-        sendSms(settings.smsPhone, settings.smsBeltKey, "✅ RideBeacon test SMS — setup is working!")
+        sendSms(settings.smsPhone, settings.smsBeltKey, "RideBeacon Test SMS from ${settings.riderName}")
     }
 
     private fun formatDuration(minutes: Int): String {
