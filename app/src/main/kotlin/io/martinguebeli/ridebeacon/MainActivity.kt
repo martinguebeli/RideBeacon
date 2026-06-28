@@ -3,7 +3,6 @@ package io.martinguebeli.ridebeacon
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import io.hammerhead.karooext.KarooSystemService
 import io.martinguebeli.ridebeacon.sender.MessageSender
+import io.martinguebeli.ridebeacon.web.WebConfigServer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var repo: SettingsRepository
     private lateinit var karooSystem: KarooSystemService
+    private var webServer: WebConfigServer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,7 +75,6 @@ class MainActivity : ComponentActivity() {
                             color = Color(0xFF9E9E9E)
                         )
 
-                        // Web config banner
                         val karooIp = remember { getKarooIp() }
                         if (karooIp != null) {
                             Surface(
@@ -102,7 +102,6 @@ class MainActivity : ComponentActivity() {
 
                         Divider(color = Color(0xFF2E2E2E))
 
-                        // Rider info
                         SectionTitle("Rider")
                         BeaconTextField("Your name", settings.riderName) {
                             settings = settings.copy(riderName = it); saved = false
@@ -113,7 +112,6 @@ class MainActivity : ComponentActivity() {
 
                         Divider(color = Color(0xFF2E2E2E))
 
-                        // WhatsApp
                         SectionTitle("WhatsApp (CallMeBot)")
                         BeaconSwitch("Enable WhatsApp", settings.whatsappEnabled) {
                             settings = settings.copy(whatsappEnabled = it, smsEnabled = if (it) false else settings.smsEnabled); saved = false
@@ -129,7 +127,6 @@ class MainActivity : ComponentActivity() {
 
                         Divider(color = Color(0xFF2E2E2E))
 
-                        // SMS
                         SectionTitle("SMS (TextBelt)")
                         BeaconSwitch("Enable SMS", settings.smsEnabled) {
                             settings = settings.copy(smsEnabled = it, whatsappEnabled = if (it) false else settings.whatsappEnabled); saved = false
@@ -172,7 +169,6 @@ class MainActivity : ComponentActivity() {
 
                         Divider(color = Color(0xFF2E2E2E))
 
-                        // Messages
                         SectionTitle("Messages")
                         Text(
                             "Placeholders: {name}  {livekey}  {livelink}  {distance}  {duration}",
@@ -198,7 +194,6 @@ class MainActivity : ComponentActivity() {
 
                         Divider(color = Color(0xFF2E2E2E))
 
-                        // Save button
                         Button(
                             onClick = {
                                 lifecycleScope.launch {
@@ -222,6 +217,23 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (webServer == null) {
+            try {
+                webServer = WebConfigServer(8080, repo, lifecycleScope).also { it.start() }
+            } catch (e: Exception) {
+                // port may already be bound by extension service — that's fine
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        webServer?.stop()
+        webServer = null
     }
 }
 
