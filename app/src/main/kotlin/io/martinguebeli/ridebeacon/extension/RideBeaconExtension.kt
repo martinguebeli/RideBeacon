@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -62,8 +63,8 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                     rideStartTimeMs = System.currentTimeMillis()
                     if (settings.notifyOnStart) {
                         scope.launch {
-                            val error = sender.sendStartResult(settings)
                             val phone = settings.smsPhone.ifBlank { settings.whatsappPhone }
+                            val error = sendWithRetry { sender.sendStartResult(settings) }
                             val alertDetail = if (error == null)
                                 "Start SMS sent to $phone"
                             else
@@ -91,8 +92,8 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                             ((System.currentTimeMillis() - it) / 60_000).toInt()
                         } ?: 0
                         scope.launch {
-                            val error = sender.sendStopResult(settings, distanceKm = 0.0, durationMin = durationMin)
                             val phone = settings.smsPhone.ifBlank { settings.whatsappPhone }
+                            val error = sendWithRetry { sender.sendStopResult(settings, distanceKm = 0.0, durationMin = durationMin) }
                             val alertDetail = if (error == null)
                                 "Stop SMS sent to $phone"
                             else
@@ -116,6 +117,21 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
             else -> {}
         }
         lastState = state
+    }
+
+    /** Retries up to 3 times with 10s delay — handles WiFi→mobile handover on ride start. */
+    private suspend fun sendWithRetry(block: suspend () -> String?): String? {
+        repeat(3) { attempt ->
+            val result = block()
+            if (result == null) return null
+            if (result == "No network" || result.contains("resolve", ignoreCase = true)) {
+                Timber.w("Network not ready (attempt ${attempt + 1}), retrying in 10s")
+                delay(10_000)
+            } else {
+                return result
+            }
+        }
+        return "No network"
     }
 
     override fun onDestroy() {
