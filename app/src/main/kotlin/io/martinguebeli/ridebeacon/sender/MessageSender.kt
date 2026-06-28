@@ -34,6 +34,7 @@ class MessageSender(private val karooSystem: KarooSystemService) {
         return template
             .replace("{name}", settings.riderName)
             .replace("{livelink}", liveLink)
+            .replace("{livekey}", settings.karooLiveKey)
             .replace("{distance}", distanceKm?.let { "%.1f".format(it) } ?: "")
             .replace("{duration}", duration ?: "")
     }

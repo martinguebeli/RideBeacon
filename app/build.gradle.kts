@@ -13,8 +13,8 @@ android {
         applicationId = "io.martinguebeli.ridebeacon"
         minSdk = 23
         targetSdk = 34
-        versionCode = 19
-        versionName = "1.2.1"
+        versionCode = 21
+        versionName = "1.2.3"
     }
 
     buildTypes {

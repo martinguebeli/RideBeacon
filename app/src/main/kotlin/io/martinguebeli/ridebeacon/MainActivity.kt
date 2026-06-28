@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
                         // Messages
                         SectionTitle("Messages")
                         Text(
-                            "Placeholders: {name}  {livelink}  {distance}  {duration}",
+                            "Placeholders: {name}  {livekey}  {livelink}  {distance}  {duration}",
                             fontSize = 10.sp,
                             color = Color(0xFF757575)
                         )
@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Text(
-                            "v1.2.1 · RideBeacon",
+                            "v1.2.3 · RideBeacon",
                             fontSize = 9.sp,
                             color = Color(0xFF424242),
                             modifier = Modifier.align(Alignment.CenterHorizontally)

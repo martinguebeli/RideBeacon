@@ -159,7 +159,7 @@ class WebConfigServer(
 
   <div class="card">
     <h2>Messages</h2>
-    <p class="placeholder-hint">Placeholders: {name} &nbsp; {livelink} &nbsp; {distance} &nbsp; {duration}</p>
+    <p class="placeholder-hint">Placeholders: {name} &nbsp; {livekey} &nbsp; {livelink} &nbsp; {distance} &nbsp; {duration}</p>
     <div class="toggle-row">
       <span class="toggle-label">Send on ride start</span>
       <label class="toggle"><input type="checkbox" name="notifyOnStart" ${checked(s.notifyOnStart)}><span class="slider"></span></label>
@@ -177,7 +177,7 @@ class WebConfigServer(
   <button type="submit">💾 Save Settings</button>
 </form>
 
-<p class="version">v1.2.1 · RideBeacon</p>
+<p class="version">v1.2.3 · RideBeacon</p>
 </body>
 </html>
         """.trimIndent()

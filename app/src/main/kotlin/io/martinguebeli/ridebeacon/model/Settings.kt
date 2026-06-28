@@ -18,11 +18,11 @@ data class BeaconSettings(
     val smsBeltKey: String = "textbelt",
 
     // Messages
-    val startMessage: String = "🚴 {name} is on a ride! Follow live: {livelink}",
+    val startMessage: String = "🚴 {name} started a ride! — Open Hammerhead dashboard.hammerhead.io/live/{livekey}",
     val stopMessage: String = "✅ {name} finished the ride. {distance} km · {duration}",
 
     val notifyOnStart: Boolean = true,
     val notifyOnStop: Boolean = true,
 )
 
-const val LIVE_BASE_URL = "https://dashboard.hammerhead.io/live/"
+const val LIVE_BASE_URL = "dashboard.hammerhead.io/live/"
