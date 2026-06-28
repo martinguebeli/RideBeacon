@@ -1,0 +1,155 @@
+# RideBeacon — User Guide
+
+RideBeacon is a Hammerhead Karoo extension that automatically notifies your family or friends when you start or finish a bike ride. No buttons to press during the ride — it just works in the background.
+
+---
+
+## What RideBeacon does
+
+- Sends a **WhatsApp message** and/or **SMS** the moment you start recording a ride
+- Sends another message when you stop
+- Includes a **live tracking link** so people at home can follow you in real time
+- Messages are fully customizable
+
+---
+
+## Requirements
+
+- Hammerhead Karoo 2 or Karoo 3
+- A smartphone with the Hammerhead companion app (for Karoo 3)
+- Internet connection on the Karoo during the ride (via companion app or WiFi)
+
+---
+
+## Step 1 — Install RideBeacon on your Karoo
+
+1. Open this link on your **phone browser**:
+   ```
+   https://github.com/martinguebeli/RideBeacon/releases/download/v1.0.0/app-debug.apk
+   ```
+2. When the download finishes, tap **Share** and select the **Hammerhead** companion app
+3. The companion app will push the APK to your Karoo
+4. On the Karoo, confirm the installation when prompted
+
+---
+
+## Step 2 — Set up WhatsApp notifications (recommended)
+
+RideBeacon uses **CallMeBot** — a free service that sends WhatsApp messages on your behalf. Setup takes 2 minutes.
+
+### 2a — Activate CallMeBot for your number
+
+1. Save this number in your phone contacts: **+34 644 59 45 90** (name it "CallMeBot")
+2. Send this exact WhatsApp message to that number:
+   ```
+   I allow callmebot to send me messages
+   ```
+3. Within a few seconds you will receive a reply containing your **API key** (looks like: `123456`)
+4. Save that API key — you will need it in the next step
+
+> ⚠️ This must be done from the phone number that will **receive** the notifications, not your own number.
+
+### 2b — Enter your details in RideBeacon
+
+1. Open **RideBeacon** from the Karoo menu
+2. Fill in:
+   - **Your name** — appears in the notification (e.g. `Martin`)
+   - **Hammerhead Live key** — the code at the end of your live tracking URL (see Step 3)
+3. Toggle **Enable WhatsApp** ON
+4. Enter the **recipient's phone number** in international format, e.g. `+41791234567`
+5. Enter the **CallMeBot API key** you received in step 2a
+6. Tap **Save Settings**
+
+---
+
+## Step 3 — Find your Hammerhead Live key
+
+The live tracking link lets people at home see exactly where you are on a map during the ride.
+
+1. Open the Hammerhead app on your phone
+2. Go to **Live Track** settings and enable it
+3. Your live link looks like this:
+   ```
+   https://dashboard.hammerhead.io/live/3738Ag
+   ```
+4. Copy only the last part — in this example: `3738Ag`
+5. Paste that into the **Hammerhead Live key** field in RideBeacon
+
+---
+
+## Step 4 — Set up SMS (optional)
+
+SMS works without any account for 1 free message per day.
+
+1. Toggle **Enable SMS** ON in RideBeacon settings
+2. Enter the recipient's phone number in international format, e.g. `+41791234567`
+3. Leave the **TextBelt key** as `textbelt` for the free tier
+4. Tap **Save Settings**
+
+> For more than 1 SMS per day, purchase credits at **textbelt.com** and enter your paid API key.
+
+---
+
+## Step 5 — Customize your messages (optional)
+
+RideBeacon comes with default messages that work out of the box. You can customize them in the settings screen.
+
+**Available placeholders:**
+
+| Placeholder | What it shows |
+|-------------|--------------|
+| `{name}` | Your name (from the Your name field) |
+| `{livelink}` | Full clickable live tracking URL |
+| `{distance}` | Distance of the ride in km |
+| `{duration}` | Duration of the ride (e.g. 1h 23min) |
+
+**Default start message:**
+```
+🚴 {name} is on a ride! Follow live: {livelink}
+```
+
+**Default stop message:**
+```
+✅ {name} finished the ride. {distance} km · {duration}
+```
+
+---
+
+## How it works during a ride
+
+Once configured, you don't need to do anything:
+
+1. Start recording your ride on the Karoo as usual
+2. RideBeacon detects the start and sends your message automatically
+3. Ride normally — RideBeacon runs silently in the background
+4. When you stop recording, RideBeacon sends the finish message
+
+---
+
+## Troubleshooting
+
+**No WhatsApp message received:**
+- Make sure the CallMeBot setup was done from the recipient's phone (not yours)
+- Check the phone number format — it must start with `+` and country code
+- Verify the API key was entered correctly
+- Ensure the Karoo has internet access (companion app connected via Bluetooth)
+
+**No SMS received:**
+- Free TextBelt allows only 1 SMS per day — if you already sent one today, it will fail silently
+- Check the phone number format
+
+**App not visible on Karoo:**
+- Restart the Karoo after installing
+- Check under **Erweiterungen** (Extensions) in the Karoo menu
+
+---
+
+## Privacy
+
+- RideBeacon stores your settings only on your Karoo device
+- Your phone number and API key are never sent to any server other than CallMeBot and TextBelt
+- The live tracking link is generated by Hammerhead, not RideBeacon
+
+---
+
+*RideBeacon v1.0.0 · Made for Hammerhead Karoo*
