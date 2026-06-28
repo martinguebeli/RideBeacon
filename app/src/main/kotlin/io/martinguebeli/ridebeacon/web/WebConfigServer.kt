@@ -177,7 +177,7 @@ class WebConfigServer(
   <button type="submit">💾 Save Settings</button>
 </form>
 
-<p class="version">v1.1.2 · RideBeacon</p>
+<p class="version">v1.1.3 · RideBeacon</p>
 </body>
 </html>
         """.trimIndent()

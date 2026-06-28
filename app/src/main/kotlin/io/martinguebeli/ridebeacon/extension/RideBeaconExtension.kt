@@ -5,7 +5,6 @@ import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.models.InRideAlert
 import io.hammerhead.karooext.models.RideState
 import io.martinguebeli.ridebeacon.R
-import io.martinguebeli.ridebeacon.model.BeaconSettings
 import io.martinguebeli.ridebeacon.sender.MessageSender
 import io.martinguebeli.ridebeacon.settings.SettingsRepository
 import io.martinguebeli.ridebeacon.web.WebConfigServer
@@ -14,7 +13,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -32,11 +32,18 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
     private var lastState: RideState? = null
     private var consumerId: String? = null
 
+    // Eagerly cached settings — avoids async load delay on first ride state event
+    private val cachedSettings by lazy {
+        settingsRepo.settingsFlow.stateIn(scope, SharingStarted.Eagerly, io.martinguebeli.ridebeacon.model.BeaconSettings())
+    }
+
     override fun onCreate() {
         super.onCreate()
         Timber.plant(Timber.DebugTree())
         karooSystem = KarooSystemService(this)
         settingsRepo = SettingsRepository(this)
+        // Trigger eager load so settings are ready before the first ride state event
+        cachedSettings
 
         try {
             webServer = WebConfigServer(8080, settingsRepo, scope).also { it.start() }
@@ -54,7 +61,7 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
     }
 
     private suspend fun handleStateChange(state: RideState) {
-        val settings = settingsRepo.settingsFlow.firstOrNull() ?: BeaconSettings()
+        val settings = cachedSettings.value
 
         when (state) {
             is RideState.Recording -> {
