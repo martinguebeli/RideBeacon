@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Text(
-                            "v1.2.4 · RideBeacon",
+                            "v1.2.5 · RideBeacon",
                             fontSize = 9.sp,
                             color = Color(0xFF424242),
                             modifier = Modifier.align(Alignment.CenterHorizontally)

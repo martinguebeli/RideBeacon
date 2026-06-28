@@ -10,11 +10,11 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "io.martinguebeli.ridebeacon"
+        applicationId = "io.ridebeacon.karoo"
         minSdk = 23
         targetSdk = 34
-        versionCode = 22
-        versionName = "1.2.4"
+        versionCode = 23
+        versionName = "1.2.5"
     }
 
     buildTypes {

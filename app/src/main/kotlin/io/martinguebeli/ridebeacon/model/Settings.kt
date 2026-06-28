@@ -18,7 +18,7 @@ data class BeaconSettings(
     val smsBeltKey: String = "textbelt",
 
     // Messages
-    val startMessage: String = "🚴 {name} started a ride! — Open the Hammerhead Dashboard and use the {livekey}",
+    val startMessage: String = "🚴 {name} started a ride! — Open the Hammerhead Dashboard and use the Livekey: {livekey}",
     val stopMessage: String = "✅ {name} finished the ride. {distance} km · {duration}",
 
     val notifyOnStart: Boolean = true,
