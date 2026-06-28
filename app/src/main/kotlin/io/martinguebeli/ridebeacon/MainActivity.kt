@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import io.hammerhead.karooext.KarooSystemService
 import io.martinguebeli.ridebeacon.sender.MessageSender
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,10 +27,13 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     private lateinit var repo: SettingsRepository
+    private lateinit var karooSystem: KarooSystemService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repo = SettingsRepository(this)
+        karooSystem = KarooSystemService(this)
+        karooSystem.connect()
 
         setContent {
             var settings by remember { mutableStateOf(BeaconSettings()) }
@@ -146,7 +150,7 @@ class MainActivity : ComponentActivity() {
                                     onClick = {
                                         smsTestStatus = "Sending…"
                                         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                            val error = MessageSender().sendTestSmsResult(settings)
+                                            val error = MessageSender(karooSystem).sendTestSmsResult(settings)
                                             smsTestStatus = if (error == null) "✓ SMS sent!" else "✗ $error"
                                         }
                                     },
@@ -209,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Text(
-                            "v1.1.6 · RideBeacon",
+                            "v1.2.0 · RideBeacon",
                             fontSize = 9.sp,
                             color = Color(0xFF424242),
                             modifier = Modifier.align(Alignment.CenterHorizontally)
