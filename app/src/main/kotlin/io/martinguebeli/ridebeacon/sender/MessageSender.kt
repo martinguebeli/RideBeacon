@@ -17,14 +17,24 @@ class MessageSender {
         .build()
 
     fun sendStart(settings: BeaconSettings) {
-        val text = buildMessage(settings.startMessage, settings, distanceKm = null, duration = null)
-        dispatch(settings, text)
+        sendStartResult(settings)
     }
 
     fun sendStop(settings: BeaconSettings, distanceKm: Double, durationMin: Int) {
+        sendStopResult(settings, distanceKm, durationMin)
+    }
+
+    /** Returns null on success, or an error message on failure. */
+    fun sendStartResult(settings: BeaconSettings): String? {
+        val text = buildMessage(settings.startMessage, settings, distanceKm = null, duration = null)
+        return dispatchResult(settings, text)
+    }
+
+    /** Returns null on success, or an error message on failure. */
+    fun sendStopResult(settings: BeaconSettings, distanceKm: Double, durationMin: Int): String? {
         val dur = formatDuration(durationMin)
         val text = buildMessage(settings.stopMessage, settings, distanceKm, dur)
-        dispatch(settings, text)
+        return dispatchResult(settings, text)
     }
 
     /** Returns null on success, or an error message on failure. */
@@ -47,13 +57,14 @@ class MessageSender {
             .replace("{duration}", duration ?: "")
     }
 
-    private fun dispatch(settings: BeaconSettings, text: String) {
+    private fun dispatchResult(settings: BeaconSettings, text: String): String? {
         if (settings.whatsappEnabled && settings.whatsappPhone.isNotBlank() && settings.whatsappApiKey.isNotBlank()) {
             sendWhatsApp(settings.whatsappPhone, settings.whatsappApiKey, text)
         }
         if (settings.smsEnabled && settings.smsPhone.isNotBlank()) {
-            sendSms(settings.smsPhone, settings.smsBeltKey, text)
+            return sendSmsResult(settings.smsPhone, settings.smsBeltKey, text)
         }
+        return null
     }
 
     private fun sendWhatsApp(phone: String, apiKey: String, text: String) {

@@ -2,7 +2,9 @@ package io.martinguebeli.ridebeacon.extension
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
+import io.hammerhead.karooext.models.InRideAlert
 import io.hammerhead.karooext.models.RideState
+import io.martinguebeli.ridebeacon.R
 import io.martinguebeli.ridebeacon.model.BeaconSettings
 import io.martinguebeli.ridebeacon.sender.MessageSender
 import io.martinguebeli.ridebeacon.settings.SettingsRepository
@@ -10,6 +12,7 @@ import io.martinguebeli.ridebeacon.web.WebConfigServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -31,10 +34,9 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
     override fun onCreate() {
         super.onCreate()
         Timber.plant(Timber.DebugTree())
-        karooSystem = KarooSystemService(applicationContext)
-        settingsRepo = SettingsRepository(applicationContext)
+        karooSystem = KarooSystemService(this)
+        settingsRepo = SettingsRepository(this)
 
-        // Start web config server on port 8080
         try {
             webServer = WebConfigServer(8080, settingsRepo, scope).also { it.start() }
             Timber.i("WebConfigServer started on port 8080")
@@ -42,14 +44,11 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
             Timber.e(e, "Failed to start WebConfigServer")
         }
 
-        karooSystem.connect()
-        observeRideState()
-        Timber.i("RideBeacon observing ride state")
-    }
-
-    private fun observeRideState() {
-        consumerId = karooSystem.addConsumer<RideState> { state ->
-            scope.launch { handleStateChange(state) }
+        karooSystem.connect {
+            Timber.i("RideBeacon connected to Karoo")
+            consumerId = karooSystem.addConsumer<RideState> { state ->
+                scope.launch { handleStateChange(state) }
+            }
         }
     }
 
@@ -62,7 +61,25 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                     Timber.i("Ride started")
                     rideStartTimeMs = System.currentTimeMillis()
                     if (settings.notifyOnStart) {
-                        scope.launch { sender.sendStart(settings) }
+                        scope.launch {
+                            val error = sender.sendStartResult(settings)
+                            val phone = settings.smsPhone.ifBlank { settings.whatsappPhone }
+                            val alertDetail = if (error == null)
+                                "Start SMS sent to $phone"
+                            else
+                                "SMS failed: $error"
+                            karooSystem.dispatch(
+                                InRideAlert(
+                                    id = "rb_start",
+                                    icon = R.drawable.ic_ridebeacon,
+                                    title = "RideBeacon",
+                                    detail = alertDetail,
+                                    autoDismissMs = 6_000L,
+                                    backgroundColor = R.color.background,
+                                    textColor = R.color.on_surface,
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -74,7 +91,23 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                             ((System.currentTimeMillis() - it) / 60_000).toInt()
                         } ?: 0
                         scope.launch {
-                            sender.sendStop(settings, distanceKm = 0.0, durationMin = durationMin)
+                            val error = sender.sendStopResult(settings, distanceKm = 0.0, durationMin = durationMin)
+                            val phone = settings.smsPhone.ifBlank { settings.whatsappPhone }
+                            val alertDetail = if (error == null)
+                                "Stop SMS sent to $phone"
+                            else
+                                "SMS failed: $error"
+                            karooSystem.dispatch(
+                                InRideAlert(
+                                    id = "rb_stop",
+                                    icon = R.drawable.ic_ridebeacon,
+                                    title = "RideBeacon",
+                                    detail = alertDetail,
+                                    autoDismissMs = 6_000L,
+                                    backgroundColor = R.color.background,
+                                    textColor = R.color.on_surface,
+                                )
+                            )
                         }
                     }
                     rideStartTimeMs = null
@@ -89,7 +122,7 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
         webServer?.stop()
         consumerId?.let { karooSystem.removeConsumer(it) }
         karooSystem.disconnect()
-        job.cancel()
+        scope.cancel()
         super.onDestroy()
     }
 }
