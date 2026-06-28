@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import io.martinguebeli.ridebeacon.sender.MessageSender
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             var settings by remember { mutableStateOf(BeaconSettings()) }
             var saved by remember { mutableStateOf(false) }
+            var smsTestStatus by remember { mutableStateOf("") }
 
             LaunchedEffect(Unit) {
                 repo.settingsFlow.collect { settings = it }
@@ -102,10 +104,41 @@ class MainActivity : ComponentActivity() {
                         }
                         if (settings.smsEnabled) {
                             BeaconTextField("Phone (+41791234567)", settings.smsPhone) {
-                                settings = settings.copy(smsPhone = it); saved = false
+                                settings = settings.copy(smsPhone = it); saved = false; smsTestStatus = ""
                             }
                             BeaconTextField("TextBelt key (leave 'textbelt' for free)", settings.smsBeltKey) {
-                                settings = settings.copy(smsBeltKey = it); saved = false
+                                settings = settings.copy(smsBeltKey = it); saved = false; smsTestStatus = ""
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        smsTestStatus = "Sending…"
+                                        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                            try {
+                                                MessageSender().sendTestSms(settings)
+                                                smsTestStatus = "✓ SMS sent!"
+                                            } catch (e: Exception) {
+                                                smsTestStatus = "✗ Failed: ${e.message}"
+                                            }
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Send test SMS", color = Color.White, fontSize = 12.sp)
+                                }
+                                if (smsTestStatus.isNotEmpty()) {
+                                    Text(
+                                        smsTestStatus,
+                                        fontSize = 11.sp,
+                                        color = if (smsTestStatus.startsWith("✓")) Color(0xFF4CAF50) else Color(0xFFFF5252),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
                             }
                         }
 

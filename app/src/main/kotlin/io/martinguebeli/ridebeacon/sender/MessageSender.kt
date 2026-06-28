@@ -83,6 +83,10 @@ class MessageSender {
         }
     }
 
+    fun sendTestSms(settings: BeaconSettings) {
+        sendSms(settings.smsPhone, settings.smsBeltKey, "✅ RideBeacon test SMS — setup is working!")
+    }
+
     private fun formatDuration(minutes: Int): String {
         val h = minutes / 60
         val m = minutes % 60
