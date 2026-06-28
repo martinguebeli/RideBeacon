@@ -1,0 +1,3 @@
+-keep class io.martinguebeli.ridebeacon.** { *; }
+-keep class io.hammerhead.** { *; }
+-dontwarn io.hammerhead.**

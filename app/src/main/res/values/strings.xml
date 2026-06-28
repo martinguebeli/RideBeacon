@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RideBeacon</string>
+    <string name="default_start_message">🚴 {name} is on a ride! Follow live: {livelink}</string>
+    <string name="default_stop_message">✅ {name} finished the ride. {distance} km · {duration}</string>
+</resources>

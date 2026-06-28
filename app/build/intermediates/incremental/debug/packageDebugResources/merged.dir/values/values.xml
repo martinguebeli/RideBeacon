@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#121212</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_surface">#EEEEEE</color>
+    <color name="primary">#FF6D00</color>
+    <color name="surface">#1E1E1E</color>
+    <string name="app_name">RideBeacon</string>
+    <string name="default_start_message">🚴 {name} is on a ride! Follow live: {livelink}</string>
+    <string name="default_stop_message">✅ {name} finished the ride. {distance} km · {duration}</string>
+    <style name="Theme.RideBeacon" parent="android:Theme.Material.Light.NoActionBar"/>
+</resources>

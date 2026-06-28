@@ -1,0 +1,13 @@
+R_DEF: Internal format may change without notice
+local
+color background
+color on_primary
+color on_surface
+color primary
+color surface
+drawable ic_ridebeacon
+string app_name
+string default_start_message
+string default_stop_message
+style Theme.RideBeacon
+xml extension_info
