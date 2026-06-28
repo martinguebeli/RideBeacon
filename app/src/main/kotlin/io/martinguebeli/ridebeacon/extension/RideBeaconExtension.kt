@@ -67,7 +67,7 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                             val alertDetail = if (error == null)
                                 "Start SMS sent to $phone"
                             else
-                                "SMS failed: $error"
+                                "SMS error — check settings"
                             karooSystem.dispatch(
                                 InRideAlert(
                                     id = "rb_start",
@@ -96,7 +96,7 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                             val alertDetail = if (error == null)
                                 "Stop SMS sent to $phone"
                             else
-                                "SMS failed: $error"
+                                "SMS error — check settings"
                             karooSystem.dispatch(
                                 InRideAlert(
                                     id = "rb_stop",

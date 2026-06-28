@@ -99,12 +99,18 @@ class MessageSender {
             http.newCall(req).execute().use { resp ->
                 val bodyStr = resp.body?.string() ?: ""
                 Timber.i("SMS response ${resp.code}: $bodyStr")
-                if (resp.isSuccessful && bodyStr.contains("\"success\":true")) null
-                else "Failed: $bodyStr"
+                when {
+                    bodyStr.contains("\"success\":true") -> null
+                    bodyStr.contains("\"error\":\"") -> {
+                        val msg = bodyStr.substringAfter("\"error\":\"").substringBefore("\"")
+                        msg.ifBlank { "Unknown error" }
+                    }
+                    else -> "HTTP ${resp.code}"
+                }
             }
         } catch (e: Exception) {
             Timber.e(e, "SMS send failed")
-            e.message ?: "Unknown error"
+            "No network"
         }
     }
 
