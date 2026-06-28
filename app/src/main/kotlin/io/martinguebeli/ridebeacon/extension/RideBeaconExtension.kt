@@ -10,13 +10,17 @@ import io.martinguebeli.ridebeacon.settings.SettingsRepository
 import io.martinguebeli.ridebeacon.web.WebConfigServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import timber.log.Timber
+import java.util.concurrent.TimeUnit
 
 class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
 
@@ -31,12 +35,14 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
     private var rideStartTimeMs: Long? = null
     private var lastState: RideState? = null
     private var consumerId: String? = null
-
-    // True once start SMS has been sent/attempted for the current ride — prevents
-    // re-firing on every auto-pause → resume cycle
     private var startSmsSentForCurrentRide = false
+    private var probeJob: Job? = null
 
-    // Eagerly cached settings so they are ready before the first RideState event
+    private val probeClient = OkHttpClient.Builder()
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.SECONDS)
+        .build()
+
     private val cachedSettings by lazy {
         settingsRepo.settingsFlow.stateIn(
             scope, SharingStarted.Eagerly,
@@ -49,11 +55,10 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
         Timber.plant(Timber.DebugTree())
         karooSystem = KarooSystemService(this)
         settingsRepo = SettingsRepository(this)
-        cachedSettings // trigger eager load
+        cachedSettings
 
         try {
             webServer = WebConfigServer(8080, settingsRepo, scope).also { it.start() }
-            Timber.i("WebConfigServer started on port 8080")
         } catch (e: Exception) {
             Timber.e(e, "Failed to start WebConfigServer")
         }
@@ -68,38 +73,35 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
 
     private suspend fun handleStateChange(state: RideState) {
         val settings = cachedSettings.value
-        Timber.d("RideState: $state (last: $lastState, startSmsSent: $startSmsSentForCurrentRide)")
+        Timber.d("RideState: $state (last: $lastState)")
 
         when (state) {
             is RideState.Recording -> {
-                // Only fire on transition from Idle (true ride start), not from Paused (auto-pause resume)
                 if (lastState is RideState.Idle || lastState == null) {
-                    Timber.i("Ride started (from Idle)")
+                    Timber.i("Ride started")
                     rideStartTimeMs = System.currentTimeMillis()
                     startSmsSentForCurrentRide = false
-                }
-                if (!startSmsSentForCurrentRide && settings.notifyOnStart) {
-                    startSmsSentForCurrentRide = true
-                    scope.launch {
-                        val phone = settings.smsPhone.ifBlank { settings.whatsappPhone }
-                        val error = sendWithRetry { sender.sendStartResult(settings) }
-                        val alertDetail = if (error == null) "Start SMS sent to $phone" else error.take(60)
-                        showAlert("rb_start", alertDetail)
+                    if (settings.notifyOnStart) {
+                        startSmsSentForCurrentRide = true
+                        probeJob?.cancel()
+                        probeJob = scope.launch { probeAndSendStart(settings) }
                     }
                 }
             }
             is RideState.Idle -> {
                 if (lastState is RideState.Recording || lastState is RideState.Paused) {
                     Timber.i("Ride stopped")
+                    probeJob?.cancel()
+                    probeJob = null
                     if (settings.notifyOnStop) {
                         val durationMin = rideStartTimeMs?.let {
                             ((System.currentTimeMillis() - it) / 60_000).toInt()
                         } ?: 0
                         scope.launch {
                             val phone = settings.smsPhone.ifBlank { settings.whatsappPhone }
-                            val error = sendWithRetry(delayMs = 0) { sender.sendStopResult(settings, distanceKm = 0.0, durationMin = durationMin) }
-                            val alertDetail = if (error == null) "Stop SMS sent to $phone" else error.take(60)
-                            showAlert("rb_stop", alertDetail)
+                            val error = sender.sendStopResult(settings, distanceKm = 0.0, durationMin = durationMin)
+                            val detail = if (error == null) "Stop SMS sent to $phone" else error.take(60)
+                            showAlert("rb_stop", detail)
                         }
                     }
                     rideStartTimeMs = null
@@ -111,6 +113,51 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
         lastState = state
     }
 
+    /**
+     * Probes network every 10 seconds for up to 90 seconds.
+     * Shows each probe result on the Karoo screen.
+     * Sends start SMS as soon as network is available.
+     */
+    private suspend fun probeAndSendStart(settings: io.martinguebeli.ridebeacon.model.BeaconSettings) {
+        val maxChecks = 9   // 9 × 10s = 90 seconds
+        val phone = settings.smsPhone.ifBlank { settings.whatsappPhone }
+
+        for (check in 1..maxChecks) {
+            val ok = probeNetwork()
+            Timber.i("Network probe $check/$maxChecks: ${if (ok) "OK" else "no network"}")
+            showAlert(
+                id = "rb_probe_$check",
+                detail = "BT check $check/9: ${if (ok) "✓ connected" else "✗ no network"}"
+            )
+
+            if (ok) {
+                // Network is up — send the SMS now
+                val error = sender.sendStartResult(settings)
+                val detail = if (error == null) "Start SMS sent to $phone" else error.take(60)
+                showAlert("rb_start", detail)
+                return
+            }
+
+            if (check < maxChecks) delay(10_000)
+        }
+
+        // 90 seconds passed, still no network
+        showAlert("rb_start_fail", "No network after 90s — SMS not sent")
+    }
+
+    private fun probeNetwork(): Boolean {
+        return try {
+            val req = Request.Builder()
+                .url("https://textbelt.com/")
+                .head()
+                .build()
+            probeClient.newCall(req).execute().use { it.isSuccessful || it.code < 500 }
+        } catch (e: Exception) {
+            Timber.w("Probe failed: ${e.message}")
+            false
+        }
+    }
+
     private fun showAlert(id: String, detail: String) {
         karooSystem.dispatch(
             InRideAlert(
@@ -118,38 +165,16 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                 icon = R.drawable.ic_ridebeacon,
                 title = "RideBeacon",
                 detail = detail,
-                autoDismissMs = 6_000L,
+                autoDismissMs = 8_000L,
                 backgroundColor = R.color.background,
                 textColor = R.color.on_surface,
             )
         )
     }
 
-    /**
-     * Waits 60s before first attempt (gives BT tethering time to establish),
-     * then retries up to 3x with 30s gaps on network errors.
-     */
-    private suspend fun sendWithRetry(delayMs: Long = 60_000L, block: suspend () -> String?): String? {
-        delay(delayMs)
-        repeat(3) { attempt ->
-            val result = block()
-            if (result == null) return null
-            val isNetworkError = result.contains("resolve", ignoreCase = true)
-                || result.contains("network", ignoreCase = true)
-                || result.contains("connect", ignoreCase = true)
-            if (isNetworkError) {
-                Timber.w("Network not ready (attempt ${attempt + 1}), retrying in 30s")
-                delay(30_000)
-            } else {
-                Timber.e("SMS failed: $result")
-                return result
-            }
-        }
-        return "No network"
-    }
-
     override fun onDestroy() {
         webServer?.stop()
+        probeJob?.cancel()
         consumerId?.let { karooSystem.removeConsumer(it) }
         karooSystem.disconnect()
         scope.cancel()
