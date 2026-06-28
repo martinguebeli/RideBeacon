@@ -6,6 +6,7 @@ import io.hammerhead.karooext.models.RideState
 import io.martinguebeli.ridebeacon.model.BeaconSettings
 import io.martinguebeli.ridebeacon.sender.MessageSender
 import io.martinguebeli.ridebeacon.settings.SettingsRepository
+import io.martinguebeli.ridebeacon.web.WebConfigServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,6 +22,7 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
     private lateinit var karooSystem: KarooSystemService
     private lateinit var settingsRepo: SettingsRepository
     private val sender = MessageSender()
+    private var webServer: WebConfigServer? = null
 
     private var rideStartTimeMs: Long? = null
     private var lastState: RideState? = null
@@ -31,6 +33,14 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
         Timber.plant(Timber.DebugTree())
         karooSystem = KarooSystemService(applicationContext)
         settingsRepo = SettingsRepository(applicationContext)
+
+        // Start web config server on port 8080
+        try {
+            webServer = WebConfigServer(8080, settingsRepo, scope).also { it.start() }
+            Timber.i("WebConfigServer started on port 8080")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to start WebConfigServer")
+        }
 
         karooSystem.connect { connected ->
             if (connected) {
@@ -79,6 +89,7 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
     }
 
     override fun onDestroy() {
+        webServer?.stop()
         consumerId?.let { karooSystem.removeConsumer(it) }
         karooSystem.disconnect()
         job.cancel()

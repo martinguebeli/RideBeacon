@@ -13,11 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import io.martinguebeli.ridebeacon.sender.MessageSender
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import io.martinguebeli.ridebeacon.model.BeaconSettings
+import java.net.NetworkInterface
 import io.martinguebeli.ridebeacon.settings.SettingsRepository
 import kotlinx.coroutines.launch
 
@@ -67,6 +69,32 @@ class MainActivity : ComponentActivity() {
                             fontSize = 12.sp,
                             color = Color(0xFF9E9E9E)
                         )
+
+                        // Web config banner
+                        val karooIp = remember { getKarooIp() }
+                        if (karooIp != null) {
+                            Surface(
+                                color = Color(0xFF1A2A1A),
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("🌐 Configure from your browser", fontSize = 12.sp, color = Color(0xFF81C784), fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "http://$karooIp:8080",
+                                        fontSize = 14.sp,
+                                        color = Color(0xFFFF6D00),
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Text("Open this on your phone or computer — same WiFi required", fontSize = 10.sp, color = Color(0xFF555555), textAlign = TextAlign.Center)
+                                }
+                            }
+                        }
 
                         Divider(color = Color(0xFF2E2E2E))
 
@@ -185,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Text(
-                            "v1.0.0 · RideBeacon",
+                            "v1.0.2 · RideBeacon",
                             fontSize = 9.sp,
                             color = Color(0xFF424242),
                             modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -194,6 +222,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+
+fun getKarooIp(): String? {
+    return try {
+        NetworkInterface.getNetworkInterfaces().toList()
+            .flatMap { it.inetAddresses.toList() }
+            .firstOrNull { !it.isLoopbackAddress && it.hostAddress?.contains('.') == true }
+            ?.hostAddress
+    } catch (e: Exception) {
+        null
     }
 }
 

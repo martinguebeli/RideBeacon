@@ -13,8 +13,8 @@ android {
         applicationId = "io.martinguebeli.ridebeacon"
         minSdk = 23
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.0.2"
     }
 
     buildTypes {
@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.okhttp)
+    implementation(libs.nanohttpd)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
     implementation(libs.androidx.datastore.preferences)
