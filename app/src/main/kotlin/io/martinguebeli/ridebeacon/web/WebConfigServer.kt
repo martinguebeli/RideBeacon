@@ -136,7 +136,7 @@ class WebConfigServer(
     <h2>WhatsApp (CallMeBot)</h2>
     <div class="toggle-row">
       <span class="toggle-label">Enable WhatsApp</span>
-      <label class="toggle"><input type="checkbox" name="whatsappEnabled" ${checked(s.whatsappEnabled)}><span class="slider"></span></label>
+      <label class="toggle"><input type="checkbox" id="whatsappEnabled" name="whatsappEnabled" ${checked(s.whatsappEnabled)} onchange="if(this.checked)document.getElementById('smsEnabled').checked=false"><span class="slider"></span></label>
     </div>
     <label>Phone number</label>
     <input type="text" name="whatsappPhone" value="${v(s.whatsappPhone)}" placeholder="+41791234567">
@@ -148,7 +148,7 @@ class WebConfigServer(
     <h2>SMS (TextBelt)</h2>
     <div class="toggle-row">
       <span class="toggle-label">Enable SMS</span>
-      <label class="toggle"><input type="checkbox" name="smsEnabled" ${checked(s.smsEnabled)}><span class="slider"></span></label>
+      <label class="toggle"><input type="checkbox" id="smsEnabled" name="smsEnabled" ${checked(s.smsEnabled)} onchange="if(this.checked)document.getElementById('whatsappEnabled').checked=false"><span class="slider"></span></label>
     </div>
     <label>Phone number</label>
     <input type="text" name="smsPhone" value="${v(s.smsPhone)}" placeholder="+41791234567">
@@ -177,7 +177,7 @@ class WebConfigServer(
   <button type="submit">💾 Save Settings</button>
 </form>
 
-<p class="version">v1.0.2 · RideBeacon</p>
+<p class="version">v1.0.3 · RideBeacon</p>
 </body>
 </html>
         """.trimIndent()

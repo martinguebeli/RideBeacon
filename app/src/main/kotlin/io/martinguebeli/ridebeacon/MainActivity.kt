@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
                         // WhatsApp
                         SectionTitle("WhatsApp (CallMeBot)")
                         BeaconSwitch("Enable WhatsApp", settings.whatsappEnabled) {
-                            settings = settings.copy(whatsappEnabled = it); saved = false
+                            settings = settings.copy(whatsappEnabled = it, smsEnabled = if (it) false else settings.smsEnabled); saved = false
                         }
                         if (settings.whatsappEnabled) {
                             BeaconTextField("Phone (+41791234567)", settings.whatsappPhone) {
@@ -128,7 +128,7 @@ class MainActivity : ComponentActivity() {
                         // SMS
                         SectionTitle("SMS (TextBelt)")
                         BeaconSwitch("Enable SMS", settings.smsEnabled) {
-                            settings = settings.copy(smsEnabled = it); saved = false
+                            settings = settings.copy(smsEnabled = it, whatsappEnabled = if (it) false else settings.whatsappEnabled); saved = false
                         }
                         if (settings.smsEnabled) {
                             BeaconTextField("Phone (+41791234567)", settings.smsPhone) {
@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Text(
-                            "v1.0.2 · RideBeacon",
+                            "v1.0.3 · RideBeacon",
                             fontSize = 9.sp,
                             color = Color(0xFF424242),
                             modifier = Modifier.align(Alignment.CenterHorizontally)
