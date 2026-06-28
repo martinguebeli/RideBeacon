@@ -97,7 +97,7 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                         } ?: 0
                         scope.launch {
                             val phone = settings.smsPhone.ifBlank { settings.whatsappPhone }
-                            val error = sendWithRetry { sender.sendStopResult(settings, distanceKm = 0.0, durationMin = durationMin) }
+                            val error = sendWithRetry(delayMs = 0) { sender.sendStopResult(settings, distanceKm = 0.0, durationMin = durationMin) }
                             val alertDetail = if (error == null) "Stop SMS sent to $phone" else error.take(60)
                             showAlert("rb_stop", alertDetail)
                         }
@@ -125,9 +125,12 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
         )
     }
 
-    /** Waits 5s for BT tethering to settle, then retries up to 3x on network errors. */
-    private suspend fun sendWithRetry(block: suspend () -> String?): String? {
-        delay(5_000)
+    /**
+     * Waits 60s before first attempt (gives BT tethering time to establish),
+     * then retries up to 3x with 30s gaps on network errors.
+     */
+    private suspend fun sendWithRetry(delayMs: Long = 60_000L, block: suspend () -> String?): String? {
+        delay(delayMs)
         repeat(3) { attempt ->
             val result = block()
             if (result == null) return null
@@ -135,8 +138,8 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
                 || result.contains("network", ignoreCase = true)
                 || result.contains("connect", ignoreCase = true)
             if (isNetworkError) {
-                Timber.w("Network not ready (attempt ${attempt + 1}), retrying in 20s")
-                delay(20_000)
+                Timber.w("Network not ready (attempt ${attempt + 1}), retrying in 30s")
+                delay(30_000)
             } else {
                 Timber.e("SMS failed: $result")
                 return result
