@@ -42,12 +42,9 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
             Timber.e(e, "Failed to start WebConfigServer")
         }
 
-        karooSystem.connect { connected ->
-            if (connected) {
-                Timber.i("RideBeacon connected to Karoo")
-                observeRideState()
-            }
-        }
+        karooSystem.connect()
+        observeRideState()
+        Timber.i("RideBeacon observing ride state")
     }
 
     private fun observeRideState() {
