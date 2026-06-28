@@ -119,19 +119,25 @@ class RideBeaconExtension : KarooExtension("ridebeacon", "1.0.0") {
         lastState = state
     }
 
-    /** Retries up to 3 times with 10s delay — handles WiFi→mobile handover on ride start. */
+    /**
+     * Waits 30s before first attempt (network stabilises after ride start),
+     * then retries up to 4 more times with 30s gaps on network errors.
+     */
     private suspend fun sendWithRetry(block: suspend () -> String?): String? {
-        repeat(3) { attempt ->
+        delay(30_000)
+        repeat(5) { attempt ->
             val result = block()
             if (result == null) return null
-            if (result == "No network" || result.contains("resolve", ignoreCase = true)) {
-                Timber.w("Network not ready (attempt ${attempt + 1}), retrying in 10s")
-                delay(10_000)
+            val isNetworkError = result == "No network" || result.contains("resolve", ignoreCase = true) || result.contains("network", ignoreCase = true)
+            if (isNetworkError) {
+                Timber.w("Network not ready (attempt ${attempt + 1}), retrying in 30s")
+                delay(30_000)
             } else {
+                Timber.e("SMS failed: $result")
                 return result
             }
         }
-        return "No network"
+        return "No network after 5 attempts"
     }
 
     override fun onDestroy() {
