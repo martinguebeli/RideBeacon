@@ -13,7 +13,7 @@ data class BeaconSettings(
     val whatsappApiKey: String = "",
 
     // SMS via TextBelt
-    val smsEnabled: Boolean = false,
+    val smsEnabled: Boolean = true,
     val smsPhone: String = "",
     val smsBeltKey: String = "textbelt",
 
