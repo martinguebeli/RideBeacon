@@ -105,8 +105,10 @@ class MainActivity : ComponentActivity() {
                                 BeaconTextField("Chat ID", settings.telegramChatId) { settings = settings.copy(telegramChatId = it); saved = false; testStatus = "" }
                             }
                             NotificationChannel.WHATSAPP -> {
-                                BeaconTextField("Phone (+41791234567)", settings.whatsappPhone) { settings = settings.copy(whatsappPhone = it); saved = false; testStatus = "" }
-                                BeaconTextField("CallMeBot API key", settings.whatsappApiKey) { settings = settings.copy(whatsappApiKey = it); saved = false; testStatus = "" }
+                                BeaconTextField("Recipient phone (+41791234567)", settings.whatsappPhone) { settings = settings.copy(whatsappPhone = it); saved = false; testStatus = "" }
+                                BeaconTextField("GREEN-API URL", settings.greenApiUrl) { settings = settings.copy(greenApiUrl = it); saved = false; testStatus = "" }
+                                BeaconTextField("Instance ID", settings.greenApiInstanceId) { settings = settings.copy(greenApiInstanceId = it); saved = false; testStatus = "" }
+                                BeaconTextField("API Token", settings.greenApiToken) { settings = settings.copy(greenApiToken = it); saved = false; testStatus = "" }
                             }
                         }
 
@@ -150,7 +152,7 @@ class MainActivity : ComponentActivity() {
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6D00))
                         ) { Text(if (saved) "✓ Saved" else "Save Settings", color = Color.White) }
 
-                        Text("v1.2.6 · RideBeacon", fontSize = 9.sp, color = Color(0xFF424242), modifier = Modifier.align(Alignment.CenterHorizontally))
+                        Text("v1.2.7 · RideBeacon", fontSize = 9.sp, color = Color(0xFF424242), modifier = Modifier.align(Alignment.CenterHorizontally))
                     }
                 }
             }

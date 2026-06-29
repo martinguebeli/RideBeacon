@@ -38,19 +38,21 @@ class WebConfigServer(
         fun bool(key: String) = params[key]?.firstOrNull() == "on"
 
         val updated = BeaconSettings(
-            riderName        = param("riderName"),
-            karooLiveKey     = param("karooLiveKey"),
-            channel          = param("channel").ifBlank { NotificationChannel.SMS.name },
-            smsPhone         = param("smsPhone"),
-            smsBeltKey       = param("smsBeltKey"),
-            telegramBotToken = param("telegramBotToken"),
-            telegramChatId   = param("telegramChatId"),
-            whatsappPhone    = param("whatsappPhone"),
-            whatsappApiKey   = param("whatsappApiKey"),
-            startMessage     = param("startMessage"),
-            stopMessage      = param("stopMessage"),
-            notifyOnStart    = bool("notifyOnStart"),
-            notifyOnStop     = bool("notifyOnStop"),
+            riderName           = param("riderName"),
+            karooLiveKey        = param("karooLiveKey"),
+            channel             = param("channel").ifBlank { NotificationChannel.SMS.name },
+            smsPhone            = param("smsPhone"),
+            smsBeltKey          = param("smsBeltKey"),
+            telegramBotToken    = param("telegramBotToken"),
+            telegramChatId      = param("telegramChatId"),
+            whatsappPhone       = param("whatsappPhone"),
+            greenApiUrl         = param("greenApiUrl"),
+            greenApiInstanceId  = param("greenApiInstanceId"),
+            greenApiToken       = param("greenApiToken"),
+            startMessage        = param("startMessage"),
+            stopMessage         = param("stopMessage"),
+            notifyOnStart       = bool("notifyOnStart"),
+            notifyOnStop        = bool("notifyOnStop"),
         )
 
         scope.launch { repo.save(updated) }
@@ -178,10 +180,16 @@ class WebConfigServer(
 
     <!-- WhatsApp panel -->
     <div id="panel_WHATSAPP" class="channel-panel">
-      <label>Phone number</label>
+      <label>Recipient phone number</label>
       <input type="text" name="whatsappPhone" value="${v(s.whatsappPhone)}" placeholder="+41791234567">
-      <label>CallMeBot API key</label>
-      <input type="text" name="whatsappApiKey" value="${v(s.whatsappApiKey)}" placeholder="123456">
+      <p class="hint">The person who will receive the messages.</p>
+      <label>GREEN-API URL</label>
+      <input type="text" name="greenApiUrl" value="${v(s.greenApiUrl)}" placeholder="https://7107.api.greenapi.com">
+      <label>Instance ID</label>
+      <input type="text" name="greenApiInstanceId" value="${v(s.greenApiInstanceId)}" placeholder="710701667432">
+      <label>API Token</label>
+      <input type="text" name="greenApiToken" value="${v(s.greenApiToken)}" placeholder="your token">
+      <p class="hint">Find all three on your <a href="https://console.green-api.com" target="_blank" style="color:#FF6D00">GREEN-API console</a>. Scan QR first to authorize.</p>
     </div>
   </div>
 
@@ -205,7 +213,7 @@ class WebConfigServer(
   <button type="submit">💾 Save Settings</button>
 </form>
 
-<p class="version">v1.2.6 · RideBeacon</p>
+<p class="version">v1.2.7 · RideBeacon</p>
 
 <script>
 function showPanel() {

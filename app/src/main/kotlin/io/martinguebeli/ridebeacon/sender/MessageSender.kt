@@ -44,7 +44,7 @@ class MessageSender(private val karooSystem: KarooSystemService) {
         return when (NotificationChannel.valueOf(settings.channel)) {
             NotificationChannel.SMS -> sendSms(settings.smsPhone, settings.smsBeltKey, text)
             NotificationChannel.TELEGRAM -> sendTelegram(settings.telegramBotToken, settings.telegramChatId, text)
-            NotificationChannel.WHATSAPP -> sendWhatsApp(settings.whatsappPhone, settings.whatsappApiKey, text)
+            NotificationChannel.WHATSAPP -> sendWhatsApp(settings, text)
         }
     }
 
@@ -90,13 +90,33 @@ class MessageSender(private val karooSystem: KarooSystemService) {
         }
     }
 
-    private suspend fun sendWhatsApp(phone: String, apiKey: String, text: String): String? {
-        if (phone.isBlank()) return "Phone number is empty"
-        val url = "https://api.callmebot.com/whatsapp.php?phone=${encode(phone)}&apikey=${encode(apiKey)}&text=${encode(text)}"
+    private suspend fun sendWhatsApp(settings: BeaconSettings, text: String): String? {
+        if (settings.whatsappPhone.isBlank()) return "Recipient phone is empty"
+        if (settings.greenApiUrl.isBlank()) return "GREEN-API URL is empty"
+        if (settings.greenApiInstanceId.isBlank()) return "GREEN-API instance ID is empty"
+        if (settings.greenApiToken.isBlank()) return "GREEN-API token is empty"
+
+        // Format: international number + @c.us
+        val digits = settings.whatsappPhone.filter { it.isDigit() }
+        val chatId = "$digits@c.us"
+
+        val url = "${settings.greenApiUrl.trimEnd('/')}/waInstance${settings.greenApiInstanceId}/sendMessage/${settings.greenApiToken}"
+        val escapedText = text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+        val body = """{"chatId":"$chatId","message":"$escapedText"}"""
         return try {
-            val resp = karooSystem.makeHttpRequest(method = "GET", url = url).first()
-            Timber.i("WhatsApp response: ${resp.statusCode}")
-            if (resp.statusCode in 200..299) null else "HTTP ${resp.statusCode}"
+            val resp = karooSystem.makeHttpRequest(
+                method = "POST",
+                url = url,
+                headers = mapOf("Content-Type" to "application/json"),
+                body = body.toByteArray()
+            ).first()
+            val bodyStr = resp.body?.let { String(it) } ?: ""
+            Timber.i("WhatsApp GREEN-API response ${resp.statusCode}: $bodyStr")
+            when {
+                bodyStr.contains("\"idMessage\"") -> null
+                bodyStr.contains("\"message\":\"") -> bodyStr.substringAfter("\"message\":\"").substringBefore("\"").ifBlank { "Unknown error" }
+                else -> "HTTP ${resp.statusCode}"
+            }
         } catch (e: Exception) {
             Timber.e(e, "WhatsApp send failed")
             "No network"

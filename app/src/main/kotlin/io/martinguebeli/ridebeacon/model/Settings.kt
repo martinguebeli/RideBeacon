@@ -19,9 +19,11 @@ data class BeaconSettings(
     val telegramBotToken: String = "",
     val telegramChatId: String = "",
 
-    // WhatsApp via CallMeBot
+    // WhatsApp via GREEN-API
     val whatsappPhone: String = "",
-    val whatsappApiKey: String = "",
+    val greenApiUrl: String = "",
+    val greenApiInstanceId: String = "",
+    val greenApiToken: String = "",
 
     // Messages
     val startMessage: String = "🚴 {name} started a ride! — {livelink}",
