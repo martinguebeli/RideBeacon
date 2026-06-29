@@ -150,8 +150,8 @@ class WebConfigServer(
       <input type="radio" id="ch_sms" name="channel" value="SMS" ${sel(NotificationChannel.SMS)} onchange="showPanel()">
       <label for="ch_sms">📱 SMS</label>
 
-      <input type="radio" id="ch_tg" name="channel" value="TELEGRAM" ${sel(NotificationChannel.TELEGRAM)} onchange="showPanel()">
-      <label for="ch_tg">✈️ Telegram</label>
+      <input type="radio" id="ch_telegram" name="channel" value="TELEGRAM" ${sel(NotificationChannel.TELEGRAM)} onchange="showPanel()">
+      <label for="ch_telegram">✈️ Telegram</label>
 
       <input type="radio" id="ch_wa" name="channel" value="WHATSAPP" ${sel(NotificationChannel.WHATSAPP)} onchange="showPanel()">
       <label for="ch_wa">💬 WhatsApp</label>
