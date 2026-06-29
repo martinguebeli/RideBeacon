@@ -165,7 +165,15 @@ class WebConfigServer(
       <input type="text" name="smsPhone" value="${v(s.smsPhone)}" placeholder="+41791234567">
       <label>TextBelt API key</label>
       <input type="text" name="smsBeltKey" value="${v(s.smsBeltKey)}" placeholder="textbelt">
-      <p class="hint">Leave as <strong>textbelt</strong> for 1 free SMS/day. Paste your paid key for unlimited.</p>
+      <p class="hint">Leave as <strong>textbelt</strong> for 1 free SMS/day.</p>
+
+      <div style="margin-top:16px;background:#1a1a1a;border-radius:8px;padding:14px;text-align:center;">
+        <p style="color:#9e9e9e;font-size:12px;margin:0 0 10px 0;">Need more SMS? Get a paid key from TextBelt.<br>From <strong style="color:#eee;">${'$'}3</strong> · Credit card · No subscription required.</p>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&color=ffffff&bgcolor=1a1a1a&data=https://textbelt.com/purchase"
+             alt="Scan to buy TextBelt key"
+             style="border-radius:8px;display:block;margin:0 auto 8px auto;">
+        <p style="color:#555;font-size:10px;margin:0;">Scan with your phone · Opens TextBelt purchase page</p>
+      </div>
     </div>
 
     <!-- Telegram panel -->
@@ -213,7 +221,7 @@ class WebConfigServer(
   <button type="submit">💾 Save Settings</button>
 </form>
 
-<p class="version">v1.2.7 · RideBeacon</p>
+<p class="version">v1.2.8 · RideBeacon</p>
 
 <script>
 function showPanel() {

@@ -152,7 +152,7 @@ class MainActivity : ComponentActivity() {
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6D00))
                         ) { Text(if (saved) "✓ Saved" else "Save Settings", color = Color.White) }
 
-                        Text("v1.2.7 · RideBeacon", fontSize = 9.sp, color = Color(0xFF424242), modifier = Modifier.align(Alignment.CenterHorizontally))
+                        Text("v1.2.8 · RideBeacon", fontSize = 9.sp, color = Color(0xFF424242), modifier = Modifier.align(Alignment.CenterHorizontally))
                     }
                 }
             }

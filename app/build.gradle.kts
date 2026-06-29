@@ -13,8 +13,8 @@ android {
         applicationId = "io.ridebeacon.karoo"
         minSdk = 23
         targetSdk = 34
-        versionCode = 25
-        versionName = "1.2.7"
+        versionCode = 26
+        versionName = "1.2.8"
     }
 
     buildTypes {
