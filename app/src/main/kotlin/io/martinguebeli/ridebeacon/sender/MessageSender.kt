@@ -74,7 +74,7 @@ class MessageSender(private val karooSystem: KarooSystemService) {
     private suspend fun sendTelegram(botToken: String, chatId: String, text: String): String? {
         if (botToken.isBlank()) return "Telegram bot token is empty"
         if (chatId.isBlank()) return "Telegram chat ID is empty"
-        val url = "https://api.telegram.org/bot${encode(botToken)}/sendMessage?chat_id=${encode(chatId)}&text=${encode(text)}"
+        val url = "https://api.telegram.org/bot$botToken/sendMessage?chat_id=${encode(chatId)}&text=${encode(text)}"
         return try {
             val resp = karooSystem.makeHttpRequest(method = "GET", url = url).first()
             val bodyStr = resp.body?.let { String(it) } ?: ""
