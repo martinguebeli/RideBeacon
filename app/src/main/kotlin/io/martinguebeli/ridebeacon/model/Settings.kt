@@ -2,27 +2,33 @@ package io.martinguebeli.ridebeacon.model
 
 import kotlinx.serialization.Serializable
 
+enum class NotificationChannel { SMS, TELEGRAM, WHATSAPP }
+
 @Serializable
 data class BeaconSettings(
     val riderName: String = "Martin",
     val karooLiveKey: String = "",
 
-    // WhatsApp via CallMeBot
-    val whatsappEnabled: Boolean = false,
-    val whatsappPhone: String = "",
-    val whatsappApiKey: String = "",
+    val channel: String = NotificationChannel.SMS.name,
 
     // SMS via TextBelt
-    val smsEnabled: Boolean = true,
     val smsPhone: String = "",
     val smsBeltKey: String = "textbelt",
 
+    // Telegram
+    val telegramBotToken: String = "",
+    val telegramChatId: String = "",
+
+    // WhatsApp via CallMeBot
+    val whatsappPhone: String = "",
+    val whatsappApiKey: String = "",
+
     // Messages
-    val startMessage: String = "🚴 {name} started a ride! — Open the Hammerhead Dashboard and use the Livekey: {livekey}",
+    val startMessage: String = "🚴 {name} started a ride! — {livelink}",
     val stopMessage: String = "✅ {name} finished the ride. {distance} km · {duration}",
 
     val notifyOnStart: Boolean = true,
     val notifyOnStop: Boolean = true,
 )
 
-const val LIVE_BASE_URL = "dashboard.hammerhead.io/live/"
+const val LIVE_BASE_URL = "https://dashboard.hammerhead.io/live/"

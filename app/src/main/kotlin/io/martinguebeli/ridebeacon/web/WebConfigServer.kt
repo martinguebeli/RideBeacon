@@ -2,6 +2,7 @@ package io.martinguebeli.ridebeacon.web
 
 import fi.iki.elonen.NanoHTTPD
 import io.martinguebeli.ridebeacon.model.BeaconSettings
+import io.martinguebeli.ridebeacon.model.NotificationChannel
 import io.martinguebeli.ridebeacon.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.firstOrNull
@@ -25,8 +26,7 @@ class WebConfigServer(
 
     private fun serveForm(): Response {
         val settings = runBlocking { repo.settingsFlow.firstOrNull() ?: BeaconSettings() }
-        val html = buildHtml(settings)
-        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", html)
+        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", buildHtml(settings))
     }
 
     private fun handleSave(session: IHTTPSession): Response {
@@ -40,12 +40,13 @@ class WebConfigServer(
         val updated = BeaconSettings(
             riderName        = param("riderName"),
             karooLiveKey     = param("karooLiveKey"),
-            whatsappEnabled  = bool("whatsappEnabled"),
-            whatsappPhone    = param("whatsappPhone"),
-            whatsappApiKey   = param("whatsappApiKey"),
-            smsEnabled       = bool("smsEnabled"),
+            channel          = param("channel").ifBlank { NotificationChannel.SMS.name },
             smsPhone         = param("smsPhone"),
             smsBeltKey       = param("smsBeltKey"),
+            telegramBotToken = param("telegramBotToken"),
+            telegramChatId   = param("telegramChatId"),
+            whatsappPhone    = param("whatsappPhone"),
+            whatsappApiKey   = param("whatsappApiKey"),
             startMessage     = param("startMessage"),
             stopMessage      = param("stopMessage"),
             notifyOnStart    = bool("notifyOnStart"),
@@ -57,26 +58,23 @@ class WebConfigServer(
 
         val html = """
             <!DOCTYPE html><html><head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
             <title>RideBeacon</title>
             <style>body{font-family:sans-serif;background:#121212;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;}
             .box{background:#1e1e1e;border-radius:12px;padding:32px 40px;text-align:center;}
-            h2{color:#FF6D00;margin-bottom:8px;}p{color:#9e9e9e;}
-            a{color:#FF6D00;text-decoration:none;font-weight:bold;}</style>
+            h2{color:#FF6D00;margin-bottom:8px;}p{color:#9e9e9e;}a{color:#FF6D00;text-decoration:none;font-weight:bold;}</style>
             <meta http-equiv="refresh" content="2;url=/">
-            </head><body><div class="box">
-            <h2>✅ Saved!</h2>
-            <p>Settings updated on your Karoo.<br>Returning to settings in 2 seconds…</p>
-            <a href="/">← Back</a>
-            </div></body></html>
+            </head><body><div class="box"><h2>✅ Saved!</h2>
+            <p>Settings updated on your Karoo.<br>Returning in 2 seconds…</p>
+            <a href="/">← Back</a></div></body></html>
         """.trimIndent()
         return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", html)
     }
 
     private fun buildHtml(s: BeaconSettings): String {
+        fun sel(ch: NotificationChannel) = if (s.channel == ch.name) "checked" else ""
         fun checked(b: Boolean) = if (b) "checked" else ""
-        fun v(value: String) = value.replace("\"", "&quot;")
+        fun v(value: String) = value.replace("\"", "&quot;").replace("<", "&lt;")
 
         return """
 <!DOCTYPE html>
@@ -99,6 +97,19 @@ class WebConfigServer(
     }
     input[type=text]:focus, textarea:focus { outline: none; border-color: #FF6D00; }
     textarea { min-height: 70px; resize: vertical; }
+    /* Radio channel selector */
+    .channel-group { display: flex; gap: 8px; margin-bottom: 4px; }
+    .channel-group input[type=radio] { display: none; }
+    .channel-group label {
+      flex: 1; text-align: center; padding: 10px 6px; background: #2a2a2a;
+      border: 2px solid #444; border-radius: 8px; cursor: pointer;
+      font-size: 13px; font-weight: 600; color: #9e9e9e; margin: 0;
+    }
+    .channel-group input[type=radio]:checked + label {
+      border-color: #FF6D00; color: #FF6D00; background: #2a1800;
+    }
+    .channel-panel { display: none; }
+    .channel-panel.active { display: block; }
     .toggle-row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
     .toggle-label { font-size: 13px; color: #eee; }
     .toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
@@ -129,37 +140,54 @@ class WebConfigServer(
     <input type="text" name="riderName" value="${v(s.riderName)}" placeholder="Martin">
     <label>Hammerhead Live key</label>
     <input type="text" name="karooLiveKey" value="${v(s.karooLiveKey)}" placeholder="e.g. 3738Ag">
-    <p class="hint">Find it in your Hammerhead app under Live Track. Only the code at the end of the URL.</p>
+    <p class="hint">Find it in the Hammerhead app under Live Track. Only the short code at the end of the URL.</p>
   </div>
 
   <div class="card">
-    <h2>WhatsApp (CallMeBot)</h2>
-    <div class="toggle-row">
-      <span class="toggle-label">Enable WhatsApp</span>
-      <label class="toggle"><input type="checkbox" id="whatsappEnabled" name="whatsappEnabled" ${checked(s.whatsappEnabled)} onchange="if(this.checked)document.getElementById('smsEnabled').checked=false"><span class="slider"></span></label>
-    </div>
-    <label>Phone number</label>
-    <input type="text" name="whatsappPhone" value="${v(s.whatsappPhone)}" placeholder="+41791234567">
-    <label>CallMeBot API key</label>
-    <input type="text" name="whatsappApiKey" value="${v(s.whatsappApiKey)}" placeholder="123456">
-  </div>
+    <h2>Notification Channel</h2>
 
-  <div class="card">
-    <h2>SMS (TextBelt)</h2>
-    <div class="toggle-row">
-      <span class="toggle-label">Enable SMS</span>
-      <label class="toggle"><input type="checkbox" id="smsEnabled" name="smsEnabled" ${checked(s.smsEnabled)} onchange="if(this.checked)document.getElementById('whatsappEnabled').checked=false"><span class="slider"></span></label>
+    <div class="channel-group">
+      <input type="radio" id="ch_sms" name="channel" value="SMS" ${sel(NotificationChannel.SMS)} onchange="showPanel()">
+      <label for="ch_sms">📱 SMS</label>
+
+      <input type="radio" id="ch_tg" name="channel" value="TELEGRAM" ${sel(NotificationChannel.TELEGRAM)} onchange="showPanel()">
+      <label for="ch_tg">✈️ Telegram</label>
+
+      <input type="radio" id="ch_wa" name="channel" value="WHATSAPP" ${sel(NotificationChannel.WHATSAPP)} onchange="showPanel()">
+      <label for="ch_wa">💬 WhatsApp</label>
     </div>
-    <label>Phone number</label>
-    <input type="text" name="smsPhone" value="${v(s.smsPhone)}" placeholder="+41791234567">
-    <label>TextBelt API key</label>
-    <input type="text" name="smsBeltKey" value="${v(s.smsBeltKey)}" placeholder="textbelt or your paid key">
-    <p class="hint">Leave as <strong>textbelt</strong> for 1 free SMS/day. Paste your paid key here.</p>
+
+    <!-- SMS panel -->
+    <div id="panel_SMS" class="channel-panel">
+      <label>Phone number</label>
+      <input type="text" name="smsPhone" value="${v(s.smsPhone)}" placeholder="+41791234567">
+      <label>TextBelt API key</label>
+      <input type="text" name="smsBeltKey" value="${v(s.smsBeltKey)}" placeholder="textbelt">
+      <p class="hint">Leave as <strong>textbelt</strong> for 1 free SMS/day. Paste your paid key for unlimited.</p>
+    </div>
+
+    <!-- Telegram panel -->
+    <div id="panel_TELEGRAM" class="channel-panel">
+      <label>Bot token</label>
+      <input type="text" name="telegramBotToken" value="${v(s.telegramBotToken)}" placeholder="123456:ABC-DEF...">
+      <p class="hint">Create a bot via @BotFather on Telegram, copy the token here.</p>
+      <label>Chat ID</label>
+      <input type="text" name="telegramChatId" value="${v(s.telegramChatId)}" placeholder="123456789">
+      <p class="hint">Message @userinfobot on Telegram to get your chat ID.</p>
+    </div>
+
+    <!-- WhatsApp panel -->
+    <div id="panel_WHATSAPP" class="channel-panel">
+      <label>Phone number</label>
+      <input type="text" name="whatsappPhone" value="${v(s.whatsappPhone)}" placeholder="+41791234567">
+      <label>CallMeBot API key</label>
+      <input type="text" name="whatsappApiKey" value="${v(s.whatsappApiKey)}" placeholder="123456">
+    </div>
   </div>
 
   <div class="card">
     <h2>Messages</h2>
-    <p class="placeholder-hint">Placeholders: {name} &nbsp; {livekey} &nbsp; {livelink} &nbsp; {distance} &nbsp; {duration}</p>
+    <p class="placeholder-hint">Placeholders: {name} &nbsp; {livelink} &nbsp; {livekey} &nbsp; {distance} &nbsp; {duration}</p>
     <div class="toggle-row">
       <span class="toggle-label">Send on ride start</span>
       <label class="toggle"><input type="checkbox" name="notifyOnStart" ${checked(s.notifyOnStart)}><span class="slider"></span></label>
@@ -177,7 +205,18 @@ class WebConfigServer(
   <button type="submit">💾 Save Settings</button>
 </form>
 
-<p class="version">v1.2.5 · RideBeacon</p>
+<p class="version">v1.2.6 · RideBeacon</p>
+
+<script>
+function showPanel() {
+  ['SMS','TELEGRAM','WHATSAPP'].forEach(function(ch) {
+    var el = document.getElementById('panel_' + ch);
+    var radio = document.getElementById('ch_' + ch.toLowerCase());
+    if (el) el.className = 'channel-panel' + (radio && radio.checked ? ' active' : '');
+  });
+}
+showPanel();
+</script>
 </body>
 </html>
         """.trimIndent()

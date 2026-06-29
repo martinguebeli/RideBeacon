@@ -3,8 +3,11 @@ package io.martinguebeli.ridebeacon
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,12 +17,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import io.hammerhead.karooext.KarooSystemService
+import io.martinguebeli.ridebeacon.model.BeaconSettings
+import io.martinguebeli.ridebeacon.model.NotificationChannel
 import io.martinguebeli.ridebeacon.sender.MessageSender
 import io.martinguebeli.ridebeacon.web.WebConfigServer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
-import io.martinguebeli.ridebeacon.model.BeaconSettings
 import java.net.NetworkInterface
 import io.martinguebeli.ridebeacon.settings.SettingsRepository
 import kotlinx.coroutines.launch
@@ -39,7 +43,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             var settings by remember { mutableStateOf(BeaconSettings()) }
             var saved by remember { mutableStateOf(false) }
-            var smsTestStatus by remember { mutableStateOf("") }
+            var testStatus by remember { mutableStateOf("") }
 
             LaunchedEffect(Unit) {
                 repo.settingsFlow.collect { settings = it }
@@ -52,10 +56,7 @@ class MainActivity : ComponentActivity() {
                     surface = Color(0xFF1E1E1E),
                 )
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -63,39 +64,17 @@ class MainActivity : ComponentActivity() {
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            "RideBeacon",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFF6D00)
-                        )
-                        Text(
-                            "Notifies your people when you ride.",
-                            fontSize = 12.sp,
-                            color = Color(0xFF9E9E9E)
-                        )
+                        Text("RideBeacon", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF6D00))
+                        Text("Notifies your people when you ride.", fontSize = 12.sp, color = Color(0xFF9E9E9E))
 
                         val karooIp = remember { getKarooIp() }
                         if (karooIp != null) {
-                            Surface(
-                                color = Color(0xFF1A2A1A),
-                                shape = MaterialTheme.shapes.small,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
+                            Surface(color = Color(0xFF1A2A1A), shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text("🌐 Configure from your browser", fontSize = 12.sp, color = Color(0xFF81C784), fontWeight = FontWeight.SemiBold)
                                     Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        "http://$karooIp:8080",
-                                        fontSize = 14.sp,
-                                        color = Color(0xFFFF6D00),
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text("Open this on your phone or computer — same WiFi required", fontSize = 10.sp, color = Color(0xFF555555), textAlign = TextAlign.Center)
+                                    Text("http://$karooIp:8080", fontSize = 14.sp, color = Color(0xFFFF6D00), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                                    Text("Open on your phone — same WiFi required", fontSize = 10.sp, color = Color(0xFF555555), textAlign = TextAlign.Center)
                                 }
                             }
                         }
@@ -103,116 +82,75 @@ class MainActivity : ComponentActivity() {
                         Divider(color = Color(0xFF2E2E2E))
 
                         SectionTitle("Rider")
-                        BeaconTextField("Your name", settings.riderName) {
-                            settings = settings.copy(riderName = it); saved = false
-                        }
-                        BeaconTextField("Hammerhead Live key (e.g. 3738Ag)", settings.karooLiveKey) {
-                            settings = settings.copy(karooLiveKey = it); saved = false
-                        }
+                        BeaconTextField("Your name", settings.riderName) { settings = settings.copy(riderName = it); saved = false }
+                        BeaconTextField("Hammerhead Live key (e.g. 3738Ag)", settings.karooLiveKey) { settings = settings.copy(karooLiveKey = it); saved = false }
 
                         Divider(color = Color(0xFF2E2E2E))
 
-                        SectionTitle("WhatsApp (CallMeBot)")
-                        BeaconSwitch("Enable WhatsApp", settings.whatsappEnabled) {
-                            settings = settings.copy(whatsappEnabled = it, smsEnabled = if (it) false else settings.smsEnabled); saved = false
-                        }
-                        if (settings.whatsappEnabled) {
-                            BeaconTextField("Phone (+41791234567)", settings.whatsappPhone) {
-                                settings = settings.copy(whatsappPhone = it); saved = false
+                        SectionTitle("Notification Channel")
+                        ChannelSelector(
+                            selected = runCatching { NotificationChannel.valueOf(settings.channel) }.getOrDefault(NotificationChannel.SMS),
+                            onSelect = { settings = settings.copy(channel = it.name); saved = false }
+                        )
+
+                        val channel = runCatching { NotificationChannel.valueOf(settings.channel) }.getOrDefault(NotificationChannel.SMS)
+
+                        when (channel) {
+                            NotificationChannel.SMS -> {
+                                BeaconTextField("Phone (+41791234567)", settings.smsPhone) { settings = settings.copy(smsPhone = it); saved = false; testStatus = "" }
+                                BeaconTextField("TextBelt key (leave 'textbelt' for free)", settings.smsBeltKey) { settings = settings.copy(smsBeltKey = it); saved = false; testStatus = "" }
                             }
-                            BeaconTextField("CallMeBot API key", settings.whatsappApiKey) {
-                                settings = settings.copy(whatsappApiKey = it); saved = false
+                            NotificationChannel.TELEGRAM -> {
+                                BeaconTextField("Bot token", settings.telegramBotToken) { settings = settings.copy(telegramBotToken = it); saved = false; testStatus = "" }
+                                BeaconTextField("Chat ID", settings.telegramChatId) { settings = settings.copy(telegramChatId = it); saved = false; testStatus = "" }
+                            }
+                            NotificationChannel.WHATSAPP -> {
+                                BeaconTextField("Phone (+41791234567)", settings.whatsappPhone) { settings = settings.copy(whatsappPhone = it); saved = false; testStatus = "" }
+                                BeaconTextField("CallMeBot API key", settings.whatsappApiKey) { settings = settings.copy(whatsappApiKey = it); saved = false; testStatus = "" }
                             }
                         }
 
-                        Divider(color = Color(0xFF2E2E2E))
-
-                        SectionTitle("SMS (TextBelt)")
-                        BeaconSwitch("Enable SMS", settings.smsEnabled) {
-                            settings = settings.copy(smsEnabled = it, whatsappEnabled = if (it) false else settings.whatsappEnabled); saved = false
-                        }
-                        if (settings.smsEnabled) {
-                            BeaconTextField("Phone (+41791234567)", settings.smsPhone) {
-                                settings = settings.copy(smsPhone = it); saved = false; smsTestStatus = ""
-                            }
-                            BeaconTextField("TextBelt key (leave 'textbelt' for free)", settings.smsBeltKey) {
-                                settings = settings.copy(smsBeltKey = it); saved = false; smsTestStatus = ""
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Button(
-                                    onClick = {
-                                        smsTestStatus = "Sending…"
-                                        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                            val error = MessageSender(karooSystem).sendTestSmsResult(settings)
-                                            smsTestStatus = if (error == null) "✓ SMS sent!" else "✗ $error"
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("Send test SMS", color = Color.White, fontSize = 12.sp)
-                                }
-                                if (smsTestStatus.isNotEmpty()) {
-                                    Text(
-                                        smsTestStatus,
-                                        fontSize = 11.sp,
-                                        color = if (smsTestStatus.startsWith("✓")) Color(0xFF4CAF50) else Color(0xFFFF5252),
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(
+                                onClick = {
+                                    testStatus = "Sending…"
+                                    lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                        val error = MessageSender(karooSystem).sendTestResult(settings)
+                                        testStatus = if (error == null) "✓ Sent!" else "✗ $error"
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
+                                modifier = Modifier.weight(1f)
+                            ) { Text("Send test message", color = Color.White, fontSize = 12.sp) }
+                            if (testStatus.isNotEmpty()) {
+                                Text(testStatus, fontSize = 11.sp,
+                                    color = if (testStatus.startsWith("✓")) Color(0xFF4CAF50) else Color(0xFFFF5252),
+                                    modifier = Modifier.weight(1f))
                             }
                         }
 
                         Divider(color = Color(0xFF2E2E2E))
 
                         SectionTitle("Messages")
-                        Text(
-                            "Placeholders: {name}  {livekey}  {livelink}  {distance}  {duration}",
-                            fontSize = 10.sp,
-                            color = Color(0xFF757575)
-                        )
-                        BeaconSwitch("Send on ride start", settings.notifyOnStart) {
-                            settings = settings.copy(notifyOnStart = it); saved = false
-                        }
+                        Text("Placeholders: {name}  {livelink}  {livekey}  {distance}  {duration}", fontSize = 10.sp, color = Color(0xFF757575))
+                        BeaconSwitch("Send on ride start", settings.notifyOnStart) { settings = settings.copy(notifyOnStart = it); saved = false }
                         if (settings.notifyOnStart) {
-                            BeaconTextField("Start message", settings.startMessage, singleLine = false) {
-                                settings = settings.copy(startMessage = it); saved = false
-                            }
+                            BeaconTextField("Start message", settings.startMessage, singleLine = false) { settings = settings.copy(startMessage = it); saved = false }
                         }
-                        BeaconSwitch("Send on ride stop", settings.notifyOnStop) {
-                            settings = settings.copy(notifyOnStop = it); saved = false
-                        }
+                        BeaconSwitch("Send on ride stop", settings.notifyOnStop) { settings = settings.copy(notifyOnStop = it); saved = false }
                         if (settings.notifyOnStop) {
-                            BeaconTextField("Stop message", settings.stopMessage, singleLine = false) {
-                                settings = settings.copy(stopMessage = it); saved = false
-                            }
+                            BeaconTextField("Stop message", settings.stopMessage, singleLine = false) { settings = settings.copy(stopMessage = it); saved = false }
                         }
 
                         Divider(color = Color(0xFF2E2E2E))
 
                         Button(
-                            onClick = {
-                                lifecycleScope.launch {
-                                    repo.save(settings)
-                                    saved = true
-                                }
-                            },
+                            onClick = { lifecycleScope.launch { repo.save(settings); saved = true } },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6D00))
-                        ) {
-                            Text(if (saved) "✓ Saved" else "Save Settings", color = Color.White)
-                        }
+                        ) { Text(if (saved) "✓ Saved" else "Save Settings", color = Color.White) }
 
-                        Text(
-                            "v1.2.5 · RideBeacon",
-                            fontSize = 9.sp,
-                            color = Color(0xFF424242),
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        )
+                        Text("v1.2.6 · RideBeacon", fontSize = 9.sp, color = Color(0xFF424242), modifier = Modifier.align(Alignment.CenterHorizontally))
                     }
                 }
             }
@@ -222,11 +160,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         if (webServer == null) {
-            try {
-                webServer = WebConfigServer(8080, repo, lifecycleScope).also { it.start() }
-            } catch (e: Exception) {
-                // port may already be bound by extension service — that's fine
-            }
+            try { webServer = WebConfigServer(8080, repo, lifecycleScope).also { it.start() } } catch (e: Exception) { }
         }
     }
 
@@ -237,15 +171,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Composable
+private fun ChannelSelector(selected: NotificationChannel, onSelect: (NotificationChannel) -> Unit) {
+    val channels = listOf(
+        NotificationChannel.SMS to "📱 SMS",
+        NotificationChannel.TELEGRAM to "✈️ Telegram",
+        NotificationChannel.WHATSAPP to "💬 WhatsApp",
+    )
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        channels.forEach { (ch, label) ->
+            val isSelected = selected == ch
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .border(2.dp, if (isSelected) Color(0xFFFF6D00) else Color(0xFF444444), RoundedCornerShape(8.dp))
+                    .clickable { onSelect(ch) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                    color = if (isSelected) Color(0xFFFF6D00) else Color(0xFF9E9E9E),
+                    textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
+
 fun getKarooIp(): String? {
     return try {
         NetworkInterface.getNetworkInterfaces().toList()
             .flatMap { it.inetAddresses.toList() }
             .firstOrNull { !it.isLoopbackAddress && it.hostAddress?.contains('.') == true }
             ?.hostAddress
-    } catch (e: Exception) {
-        null
-    }
+    } catch (e: Exception) { null }
 }
 
 @Composable
@@ -254,25 +212,16 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun BeaconTextField(
-    label: String,
-    value: String,
-    singleLine: Boolean = true,
-    onChange: (String) -> Unit,
-) {
+private fun BeaconTextField(label: String, value: String, singleLine: Boolean = true, onChange: (String) -> Unit) {
     OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
+        value = value, onValueChange = onChange,
         label = { Text(label, fontSize = 11.sp) },
         singleLine = singleLine,
         modifier = Modifier.fillMaxWidth(),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFFFF6D00),
-            unfocusedBorderColor = Color(0xFF424242),
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color(0xFFCCCCCC),
-            focusedLabelColor = Color(0xFFFF6D00),
-            unfocusedLabelColor = Color(0xFF757575),
+            focusedBorderColor = Color(0xFFFF6D00), unfocusedBorderColor = Color(0xFF424242),
+            focusedTextColor = Color.White, unfocusedTextColor = Color(0xFFCCCCCC),
+            focusedLabelColor = Color(0xFFFF6D00), unfocusedLabelColor = Color(0xFF757575),
             cursorColor = Color(0xFFFF6D00),
         )
     )
@@ -280,16 +229,8 @@ private fun BeaconTextField(
 
 @Composable
 private fun BeaconSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontSize = 13.sp, color = Color(0xFFEEEEEE))
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFFF6D00))
-        )
+        Switch(checked = checked, onCheckedChange = onChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFFF6D00)))
     }
 }

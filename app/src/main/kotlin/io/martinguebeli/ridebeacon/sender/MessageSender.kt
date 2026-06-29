@@ -5,6 +5,7 @@ import io.hammerhead.karooext.models.HttpResponseState
 import io.hammerhead.karooext.models.OnHttpResponse
 import io.martinguebeli.ridebeacon.model.BeaconSettings
 import io.martinguebeli.ridebeacon.model.LIVE_BASE_URL
+import io.martinguebeli.ridebeacon.model.NotificationChannel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.callbackFlow
@@ -20,13 +21,13 @@ class MessageSender(private val karooSystem: KarooSystemService) {
     }
 
     suspend fun sendStopResult(settings: BeaconSettings, distanceKm: Double, durationMin: Int): String? {
-        val dur = formatDuration(durationMin)
-        val text = buildMessage(settings.stopMessage, settings, distanceKm, dur)
+        val text = buildMessage(settings.stopMessage, settings, distanceKm, formatDuration(durationMin))
         return dispatch(settings, text)
     }
 
-    suspend fun sendTestSmsResult(settings: BeaconSettings): String? {
-        return sendSms(settings.smsPhone, settings.smsBeltKey, "RideBeacon Test SMS from ${settings.riderName}")
+    suspend fun sendTestResult(settings: BeaconSettings): String? {
+        val text = "RideBeacon Test from ${settings.riderName}"
+        return dispatch(settings, text)
     }
 
     private fun buildMessage(template: String, settings: BeaconSettings, distanceKm: Double?, duration: String?): String {
@@ -40,13 +41,11 @@ class MessageSender(private val karooSystem: KarooSystemService) {
     }
 
     private suspend fun dispatch(settings: BeaconSettings, text: String): String? {
-        if (settings.whatsappEnabled && settings.whatsappPhone.isNotBlank() && settings.whatsappApiKey.isNotBlank()) {
-            sendWhatsApp(settings.whatsappPhone, settings.whatsappApiKey, text)
+        return when (NotificationChannel.valueOf(settings.channel)) {
+            NotificationChannel.SMS -> sendSms(settings.smsPhone, settings.smsBeltKey, text)
+            NotificationChannel.TELEGRAM -> sendTelegram(settings.telegramBotToken, settings.telegramChatId, text)
+            NotificationChannel.WHATSAPP -> sendWhatsApp(settings.whatsappPhone, settings.whatsappApiKey, text)
         }
-        if (settings.smsEnabled && settings.smsPhone.isNotBlank()) {
-            return sendSms(settings.smsPhone, settings.smsBeltKey, text)
-        }
-        return null
     }
 
     private suspend fun sendSms(phone: String, apiKey: String, text: String): String? {
@@ -72,21 +71,42 @@ class MessageSender(private val karooSystem: KarooSystemService) {
         }
     }
 
-    private suspend fun sendWhatsApp(phone: String, apiKey: String, text: String) {
-        val url = "https://api.callmebot.com/whatsapp.php?phone=${encode(phone)}&apikey=${encode(apiKey)}&text=${encode(text)}"
-        try {
+    private suspend fun sendTelegram(botToken: String, chatId: String, text: String): String? {
+        if (botToken.isBlank()) return "Telegram bot token is empty"
+        if (chatId.isBlank()) return "Telegram chat ID is empty"
+        val url = "https://api.telegram.org/bot${encode(botToken)}/sendMessage?chat_id=${encode(chatId)}&text=${encode(text)}"
+        return try {
             val resp = karooSystem.makeHttpRequest(method = "GET", url = url).first()
-            Timber.i("WhatsApp sent: ${resp.statusCode}")
+            val bodyStr = resp.body?.let { String(it) } ?: ""
+            Timber.i("Telegram response ${resp.statusCode}: $bodyStr")
+            when {
+                bodyStr.contains("\"ok\":true") -> null
+                bodyStr.contains("\"description\":\"") -> bodyStr.substringAfter("\"description\":\"").substringBefore("\"").ifBlank { "Unknown error" }
+                else -> "HTTP ${resp.statusCode}"
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Telegram send failed")
+            "No network"
+        }
+    }
+
+    private suspend fun sendWhatsApp(phone: String, apiKey: String, text: String): String? {
+        if (phone.isBlank()) return "Phone number is empty"
+        val url = "https://api.callmebot.com/whatsapp.php?phone=${encode(phone)}&apikey=${encode(apiKey)}&text=${encode(text)}"
+        return try {
+            val resp = karooSystem.makeHttpRequest(method = "GET", url = url).first()
+            Timber.i("WhatsApp response: ${resp.statusCode}")
+            if (resp.statusCode in 200..299) null else "HTTP ${resp.statusCode}"
         } catch (e: Exception) {
             Timber.e(e, "WhatsApp send failed")
+            "No network"
         }
     }
 
     private fun encode(value: String) = URLEncoder.encode(value, "UTF-8")
 
     private fun formatDuration(minutes: Int): String {
-        val h = minutes / 60
-        val m = minutes % 60
+        val h = minutes / 60; val m = minutes % 60
         return if (h > 0) "${h}h ${m}min" else "${m}min"
     }
 }
@@ -105,10 +125,7 @@ private fun KarooSystemService.makeHttpRequest(
                 close()
             }
         },
-        onError = { err: String ->
-            close(IllegalStateException(err))
-            Unit
-        }
+        onError = { err: String -> close(IllegalStateException(err)); Unit }
     )
     awaitClose { removeConsumer(listenerId) }
 }
